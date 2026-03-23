@@ -12,18 +12,18 @@ permissions:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
             artifact_name: cf-lense
-            asset_name: cf-lense-linux
+            asset_name: cf-lense-linux-x64
           - os: windows-latest
             artifact_name: cf-lense.exe
-            asset_name: cf-lense-windows.exe
+            asset_name: cf-lense-windows-x64.exe
           - os: macos-latest
             artifact_name: cf-lense
-            asset_name: cf-lense-macos
+            asset_name: cf-lense-macos-arm64
 
     runs-on: ${{ matrix.os }}
 
