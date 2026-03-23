@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+venv/
+export/
+*.txt
+*.md
+*.pdf
+*.html
+.env
+.vscode/
+.idea/
+
+# Exceptions
+!README.md
+!requirements.txt
