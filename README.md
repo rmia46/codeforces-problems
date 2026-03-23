@@ -1,58 +1,45 @@
 # cf-lense v1.1.0
 
-A powerful and modular Python CLI tool to filter and export Codeforces problems into multiple formats (.txt, .md, .pdf, .html).
+A modular CLI tool to filter and export Codeforces problems into multiple formats.
 
 **Author:** @rmia46 (Roman Mia)  
 **GitHub:** [https://github.com/rmia46/cf-lense](https://github.com/rmia46/cf-lense)
 
 ## Features
+- Interactive CLI for rating and tag filtering
+- Exports to .txt, .md, and .html formats
+- Modern, colorful HTML design optimized for printing to PDF
+- Organized exports with incremental IDs (e.g., `03_23_0001_50`)
+- No random UUIDs; sequential tracking for easy management
 
-- **Interactive CLI**: Fast and easy-to-use prompts with `InquirerPy`.
-- **Advanced Filtering**: Filter by rating range, specific tags (OR logic), and problem limit.
-- **Smart Tags**: If no tags are selected, it searches across all available tags (Codeforces default).
-- **Multiple Export Formats (Toggleable)**:
-  - **Text (.txt)**: Plain text with detailed headers.
-  - **Markdown (.md)**: Formatted table, perfect for GitHub.
-  - **PDF (.pdf)**: Professional document with clickable links.
-  - **HTML (.html)**: Modern, responsive table with styled tags.
-- **Organized Exports**: Every export is saved in a unique timestamped folder within `export/` to prevent overwrites.
-- **Type Safety**: Built with Python dataclasses and type hinting.
+## Quick Start (Binary)
+Download the latest pre-built binary for your system from the [Releases](https://github.com/rmia46/cf-lense/releases) page.
+```bash
+chmod +x cf-lense-linux
+./cf-lense-linux
+```
 
-## Prerequisites
-
-- Python 3.7 or higher
-
-## Quick Start
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/rmia46/cf-lense.git
-   cd cf-lense
-   ```
-
-2. **Setup environment**:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
-
-3. **Run the tool**:
-   ```bash
-   python3 main.py
-   ```
+## Setup (Source)
+1. Clone and enter the repo:
+```bash
+git clone https://github.com/rmia46/cf-lense.git && cd cf-lense
+```
+2. Setup environment and install dependencies:
+```bash
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+```
+3. Run the tool:
+```bash
+python3 main.py
+```
 
 ## Usage
+- **Rating**: Enter a range (e.g., 1000 to 1500) or leave blank for any.
+- **Tags**: Use `Space` to toggle specific tags. Leave empty to search all (CF default).
+- **Export**: Toggle multiple formats with `Space`.
+- **Output**: Files are saved in `export/MM_DD_ID_COUNT/`.
 
-Follow the interactive prompts to set your criteria. You can toggle multiple export formats using the `Space` bar. 
-
-Exports will be located in:
-`export/YYYYMMDD_HHMMSS_UUID/`
-
-## Project Structure
-
-- `main.py`: CLI entry point and orchestration.
-- `cf_api.py`: Codeforces API integration and data models.
-- `cli_utils.py`: Interactive prompt logic and validation.
-- `filters.py`: Problem filtering engine.
-- `exporters.py`: multi-format generation logic.
+## Dependencies
+- requests
+- InquirerPy
