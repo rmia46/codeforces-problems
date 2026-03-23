@@ -2,7 +2,7 @@
 
 A modular CLI tool to filter and export Codeforces problems into multiple formats.
 
-**Verson:** 1.1.0
+**Version:** 1.1.0
 **Author:** @rmia46 (Roman Mia)  
 **GitHub:** [https://github.com/rmia46/cf-lense](https://github.com/rmia46/cf-lense)
 
