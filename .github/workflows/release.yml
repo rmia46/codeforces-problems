@@ -16,7 +16,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
-            artifact_name: cf-lense-linux
+            artifact_name: cf-lense
             asset_name: cf-lense-linux
           - os: windows-latest
             artifact_name: cf-lense.exe
@@ -45,10 +45,15 @@ jobs:
         run: |
           pyinstaller --onefile --name cf-lense main.py
 
+      - name: Rename binary
+        shell: bash
+        run: |
+          mv dist/${{ matrix.artifact_name }} dist/${{ matrix.asset_name }}
+
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/${{ matrix.artifact_name }}
+            dist/${{ matrix.asset_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
