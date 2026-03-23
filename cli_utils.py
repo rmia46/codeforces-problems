@@ -58,7 +58,6 @@ def get_user_filters(unique_tags: List[str]) -> Dict[str, Any]:
         choices=[
             Choice("txt", name="Text (.txt)", enabled=True),
             Choice("md", name="Markdown (.md)"),
-            Choice("pdf", name="PDF (.pdf)"),
             Choice("html", name="HTML (.html)")
         ],
         validate=lambda result: len(result) >= 1,

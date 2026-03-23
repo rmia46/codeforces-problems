@@ -1,13 +1,11 @@
 import os
-import uuid
 from typing import List, Dict, Any
-from fpdf import FPDF
 import datetime
 from cf_api import Problem
 
 # Global Metadata
 SCRIPT_TITLE = "cf-lense"
-VERSION = "v1.0.0"
+VERSION = "v1.1.0"
 AUTHOR = "@rmia46 (Roman Mia)"
 GITHUB_LINK = "https://github.com/rmia46/cf-lense"
 
@@ -17,16 +15,43 @@ class Exporter:
         self.filters = filters
         self.timestamp_raw = datetime.datetime.now()
         self.timestamp_str = self.timestamp_raw.strftime("%Y-%m-%d %H:%M:%S")
-        self.unique_id = str(uuid.uuid4())[:8]
         
-        # Create folder structure: export/YYYYMMDD_HHMMSS_ID/
-        folder_name = f"{self.timestamp_raw.strftime('%Y%m%d_%H%M%S')}_{self.unique_id}"
-        self.output_dir = os.path.join("export", folder_name)
+        # Calculate next incremental ID by scanning export folder
+        self.inc_id = self._get_next_id()
+        self.count = len(problems)
+        
+        # Compact naming: MM_DD_[ID]_[COUNT]
+        month_day = self.timestamp_raw.strftime("%m_%d")
+        self.base_identifier = f"{month_day}_{self.inc_id}_{self.count}"
+        
+        # Create folder: export/MM_DD_ID_COUNT/
+        self.output_dir = os.path.join("export", self.base_identifier)
         os.makedirs(self.output_dir, exist_ok=True)
 
+    def _get_next_id(self) -> str:
+        """Finds the highest existing incremental ID in the export directory and returns the next one."""
+        export_path = "export"
+        if not os.path.exists(export_path):
+            return "0001"
+        
+        max_id = 0
+        # Expected folder pattern: MM_DD_NNNN_COUNT
+        for folder_name in os.listdir(export_path):
+            if os.path.isdir(os.path.join(export_path, folder_name)):
+                parts = folder_name.split('_')
+                if len(parts) >= 3:
+                    try:
+                        # parts[2] should be the NNNN (incremental ID)
+                        current_id = int(parts[2])
+                        if current_id > max_id:
+                            max_id = current_id
+                    except ValueError:
+                        continue
+        
+        return f"{max_id + 1:04d}"
+
     def _get_filename(self, extension: str) -> str:
-        base_name = f"problems_{self.timestamp_raw.strftime('%Y%m%d_%H%M%S')}_{self.unique_id}"
-        return os.path.join(self.output_dir, f"{base_name}.{extension}")
+        return os.path.join(self.output_dir, f"cf_lense_{self.base_identifier}.{extension}")
 
     def _get_filter_str(self) -> str:
         min_r = self.filters["min_rating"] or "Any"
@@ -41,7 +66,8 @@ class Exporter:
             f"GitHub: {GITHUB_LINK}",
             f"Generated on: {self.timestamp_str}",
             f"Filters: {self._get_filter_str()}",
-            "-" * 80
+            f"Total Problems: {self.count}",
+            "=" * 80
         ]
 
     def export_to_txt(self) -> str:
@@ -51,96 +77,165 @@ class Exporter:
                 f.write(line + "\n")
             f.write("\n")
             for p in self.problems:
-                f.write(f"{p.name} | ID: {p.full_id} | Rating: {p.rating or 'N/A'}\n")
+                f.write(f"[{p.full_id}] {p.name}\n")
+                f.write(f"Rating: {p.rating or 'N/A'}\n")
                 f.write(f"Topics: {', '.join(p.tags)}\n")
-                f.write(f"Link: {p.link}\n\n")
+                f.write(f"URL   : {p.link}\n")
+                f.write("-" * 40 + "\n")
         return filename
 
     def export_to_md(self) -> str:
         filename = self._get_filename("md")
         with open(filename, "w", encoding="utf-8") as f:
-            f.write(f"# {SCRIPT_TITLE}\n\n")
-            f.write(f"- **Author:** {AUTHOR}\n")
-            f.write(f"- **GitHub:** [{GITHUB_LINK}]({GITHUB_LINK})\n")
-            f.write(f"- **Generated on:** {self.timestamp_str}\n")
-            f.write(f"- **Filters:** {self._get_filter_str()}\n\n")
-            f.write("| Problem Name | ID | Rating | Topics | Link |\n")
+            f.write(f"# {SCRIPT_TITLE} {VERSION}\n\n")
+            f.write(f"```text\n")
+            f.write(f"Author: {AUTHOR}\n")
+            f.write(f"GitHub: {GITHUB_LINK}\n")
+            f.write(f"Generated on: {self.timestamp_str}\n")
+            f.write(f"Filters: {self._get_filter_str()}\n")
+            f.write(f"Total Problems: {self.count}\n")
+            f.write(f"```\n\n")
+            f.write("| ID | Problem Name | Rating | Topics | Link |\n")
             f.write("| :--- | :--- | :--- | :--- | :--- |\n")
             for p in self.problems:
-                tags = ", ".join(p.tags)
-                f.write(f"| {p.name} | {p.full_id} | {p.rating or 'N/A'} | {tags} | [Link]({p.link}) |\n")
-        return filename
-
-    def export_to_pdf(self) -> str:
-        filename = self._get_filename("pdf")
-        pdf = FPDF()
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.add_page()
-        
-        # Header Section
-        pdf.set_font("helvetica", "B", 16)
-        pdf.cell(0, 10, SCRIPT_TITLE, ln=True, align="C")
-        
-        pdf.set_font("helvetica", "", 10)
-        pdf.cell(0, 6, f"Author: {AUTHOR}", ln=True, align="C")
-        pdf.set_text_color(0, 0, 255)
-        pdf.cell(0, 6, GITHUB_LINK, ln=True, align="C", link=GITHUB_LINK)
-        pdf.set_text_color(0, 0, 0)
-        pdf.cell(0, 6, f"Generated on: {self.timestamp_str}", ln=True, align="C")
-        pdf.multi_cell(0, 6, f"Filters: {self._get_filter_str()}", align="C")
-        pdf.ln(5)
-        
-        for p in self.problems:
-            pdf.set_font("helvetica", "B", 12)
-            pdf.cell(0, 8, f"{p.name} ({p.full_id})", ln=True)
-            
-            pdf.set_font("helvetica", "", 10)
-            pdf.cell(0, 6, f"Rating: {p.rating or 'N/A'}", ln=True)
-            pdf.multi_cell(0, 6, f"Topics: {', '.join(p.tags)}")
-            
-            pdf.set_text_color(0, 0, 255)
-            pdf.cell(0, 6, "View on Codeforces", ln=True, link=p.link)
-            pdf.set_text_color(0, 0, 0)
-            pdf.ln(4)
-            
-        pdf.output(filename)
+                tags = ", ".join([f"`{t}`" for t in p.tags])
+                f.write(f"| `{p.full_id}` | **{p.name}** | {p.rating or 'N/A'} | {tags} | [Open]({p.link}) |\n")
         return filename
 
     def export_to_html(self) -> str:
         filename = self._get_filename("html")
         html_content = f"""
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
-            <title>{SCRIPT_TITLE}</title>
+            <meta charset="UTF-8">
+            <title>{SCRIPT_TITLE} - {self.inc_id}</title>
             <style>
-                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 1000px; margin: auto; padding: 20px; }}
-                h1 {{ color: #2c3e50; text-align: center; }}
-                .meta {{ background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }}
-                table {{ width: 100%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); }}
-                th, td {{ padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }}
-                th {{ background-color: #3498db; color: white; }}
-                tr:hover {{ background-color: #f1f1f1; }}
-                .tag {{ background: #e0e0e0; padding: 2px 8px; border-radius: 4px; font-size: 0.85em; margin-right: 4px; display: inline-block; }}
-                a {{ color: #3498db; text-decoration: none; }}
-                a:hover {{ text-decoration: underline; }}
+                :root {{
+                    --bg: #ffffff;
+                    --text: #2d3436;
+                    --primary: #0984e3;
+                    --secondary: #6c5ce7;
+                    --accent: #00cec9;
+                    --border: #dfe6e9;
+                    --tag-bg: #f1f2f6;
+                    --tag-text: #2f3542;
+                    --header-bg: #f8f9fa;
+                }}
+                body {{ 
+                    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; 
+                    line-height: 1.6; 
+                    color: var(--text); 
+                    max-width: 1200px; 
+                    margin: 0 auto; 
+                    padding: 40px 20px;
+                    background: var(--bg);
+                }}
+                .header {{ 
+                    border-left: 5px solid var(--primary); 
+                    background: var(--header-bg);
+                    margin-bottom: 30px; 
+                    padding: 20px;
+                    border-radius: 0 8px 8px 0;
+                }}
+                h1 {{ 
+                    margin: 0; 
+                    font-size: 28px; 
+                    color: var(--primary);
+                    font-weight: 900;
+                    text-transform: lowercase;
+                }}
+                .meta-info {{ font-size: 13px; color: #636e72; margin-top: 10px; }}
+                .meta-info a {{ color: var(--secondary); text-decoration: none; }}
+                .filters {{ 
+                    background: #eef2f7; 
+                    padding: 15px; 
+                    border-radius: 6px;
+                    font-size: 13px;
+                    margin: 25px 0;
+                    border-left: 5px solid var(--accent);
+                }}
+                table {{ 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin-top: 20px;
+                }}
+                th, td {{ 
+                    padding: 14px; 
+                    text-align: left; 
+                    border-bottom: 1px solid var(--border);
+                    font-size: 14px;
+                }}
+                th {{ 
+                    background: var(--primary);
+                    color: white;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    font-size: 12px;
+                    letter-spacing: 1px;
+                }}
+                tr:nth-child(even) {{ background: #fdfdfd; }}
+                tr:hover {{ background: #f1f2f6; transition: 0.2s; }}
+                
+                .tag {{ 
+                    background: var(--tag-bg); 
+                    padding: 3px 8px; 
+                    border-radius: 4px; 
+                    font-size: 11px; 
+                    margin: 2px;
+                    display: inline-block;
+                    color: var(--tag-text);
+                    border: 1px solid #dcdde1;
+                    font-weight: 600;
+                }}
+                .rating-badge {{
+                    font-weight: bold;
+                    color: var(--primary);
+                }}
+                .prob-id {{ color: var(--secondary); font-weight: bold; }}
+                
+                .btn-link {{ 
+                    color: white; 
+                    background: var(--primary);
+                    padding: 4px 10px;
+                    border-radius: 4px;
+                    text-decoration: none; 
+                    font-size: 12px;
+                    font-weight: bold;
+                }}
+                .btn-link:hover {{ background: var(--secondary); }}
+                
+                @media print {{
+                    body {{ padding: 0; }}
+                    .no-print {{ display: none; }}
+                    .header {{ border: 1px solid #eee; background: white; }}
+                    th {{ background: #eee !important; color: black !important; }}
+                    .tag {{ border: 1px solid #ddd; background: white; }}
+                }}
             </style>
         </head>
         <body>
-            <h1>{SCRIPT_TITLE}</h1>
-            <div class="meta">
-                <p><strong>Author:</strong> {AUTHOR} | <strong>GitHub:</strong> <a href="{GITHUB_LINK}">{GITHUB_LINK}</a></p>
-                <p><strong>Generated on:</strong> {self.timestamp_str}</p>
-                <p><strong>Filters:</strong> {self._get_filter_str()}</p>
+            <div class="header">
+                <h1>{SCRIPT_TITLE} <span style="font-size: 14px; color: #888;">{VERSION}</span></h1>
+                <div class="meta-info">
+                    Author: <strong>{AUTHOR}</strong> | GitHub: <a href="{GITHUB_LINK}">{GITHUB_LINK}</a><br>
+                    Generated: {self.timestamp_str} | ID: <span class="prob-id">{self.inc_id}</span>
+                </div>
             </div>
+
+            <div class="filters">
+                <strong style="color: var(--primary);">FILTERS:</strong> {self._get_filter_str()}<br>
+                <strong style="color: var(--primary);">COUNT:</strong> {self.count} problems
+            </div>
+
             <table>
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>ID</th>
-                        <th>Rating</th>
+                        <th style="width: 80px;">ID</th>
+                        <th>Problem Name</th>
+                        <th style="width: 80px;">Rating</th>
                         <th>Topics</th>
-                        <th>Action</th>
+                        <th class="no-print" style="width: 80px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -149,17 +244,20 @@ class Exporter:
             tags_html = "".join([f'<span class="tag">{t}</span>' for t in p.tags])
             html_content += f"""
                 <tr>
-                    <td>{p.name}</td>
-                    <td>{p.full_id}</td>
-                    <td>{p.rating or 'N/A'}</td>
+                    <td><code class="prob-id">{p.full_id}</code></td>
+                    <td><strong>{p.name}</strong></td>
+                    <td><span class="rating-badge">{p.rating or 'N/A'}</span></td>
                     <td>{tags_html}</td>
-                    <td><a href="{p.link}" target="_blank">View Problem</a></td>
+                    <td class="no-print"><a href="{p.link}" target="_blank" class="btn-link">OPEN</a></td>
                 </tr>
             """
         
         html_content += """
                 </tbody>
             </table>
+            <p style="text-align: center; margin-top: 50px; font-size: 11px; color: #b2bec3; border-top: 1px solid #eee; padding-top: 20px;">
+                Generated via <strong>cf-lense</strong> CLI tool.
+            </p>
         </body>
         </html>
         """

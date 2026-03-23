@@ -12,7 +12,7 @@ RESET = "\033[0m"
 BOLD = "\033[1m"
 
 def main():
-    print(f"{BLUE}{BOLD}--- cf-lense v1.0.0 ---{RESET}")
+    print(f"{BLUE}{BOLD}--- cf-lense v1.1.0 ---{RESET}")
     print(f"{CYAN}Fetching latest problems from CF...{RESET}")
     
     all_problems = fetch_problems()
@@ -44,8 +44,6 @@ def main():
             exported_file = exporter.export_to_txt()
         elif fmt == "md":
             exported_file = exporter.export_to_md()
-        elif fmt == "pdf":
-            exported_file = exporter.export_to_pdf()
         elif fmt == "html":
             exported_file = exporter.export_to_html()
         

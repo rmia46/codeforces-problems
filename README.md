@@ -1,4 +1,4 @@
-# cf-lense v1.0.0
+# cf-lense v1.1.0
 
 A powerful and modular Python CLI tool to filter and export Codeforces problems into multiple formats (.txt, .md, .pdf, .html).
 

@@ -9,6 +9,9 @@ export/
 .env
 .vscode/
 .idea/
+build/
+dist/
+*.spec
 
 # Exceptions
 !README.md
